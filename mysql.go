@@ -9,10 +9,18 @@ import (
 )
 
 type mysqlDatabase struct {
-	conn     *sql.DB
-	database string
-	pkg      string
-	prefix   []string
+	conn         *sql.DB
+	database     string
+	pkg          string
+	removePrefix []string
+	json         bool
+	xml          bool
+	toml         bool
+	yaml         bool
+	gorm         bool
+	gormType     bool
+	gormNullable bool
+	prefix       []string
 }
 
 func (d *mysqlDatabase) GetSchema(database string) ([]*TableSchema, error) {
@@ -38,6 +46,22 @@ func (d *mysqlDatabase) GetSchema(database string) ([]*TableSchema, error) {
 		if err != nil {
 			log.Println(err)
 		}
+
+		if len(d.prefix) > 0 {
+			ok := func() bool {
+				for _, prefix := range d.prefix {
+					if strings.HasPrefix(tab.Name, prefix) {
+						return true
+					}
+				}
+				return false
+			}()
+
+			if !ok {
+				continue
+			}
+		}
+
 		tables = append(tables, tab)
 		tabMap[tab.Name] = tab
 	}
@@ -85,8 +109,8 @@ func (d *mysqlDatabase) GenerateStruct(w io.Writer) error {
 	for _, tab := range tables {
 		name := tab.Name
 
-		if len(d.prefix) > 0 {
-			for _, prefix := range d.prefix {
+		if len(d.removePrefix) > 0 {
+			for _, prefix := range d.removePrefix {
 				name = strings.TrimPrefix(name, prefix)
 			}
 		}
@@ -102,38 +126,59 @@ func (d *mysqlDatabase) GenerateStruct(w io.Writer) error {
 		fmt.Fprintf(w, "type %s struct {\n", structName)
 
 		for _, col := range tab.Columns {
-			if len(col.Comment) >= 50 {
-				fmt.Fprintf(w, "// %s\n", col.Comment)
-			}
+			// if len(col.Comment) >= 50 {
+			// 	fmt.Fprintf(w, "// %s\n", col.Comment)
+			// }
 
 			goFieldName := convertToGoName(col.ColName)
 			goFieldType := convertToGoType(col.ColType)
 
 			fmt.Fprintf(w, " %s %s", goFieldName, goFieldType)
 
-			fmt.Fprint(w, "`gorm:")
-			fmt.Fprint(w, `"`)
-			fmt.Fprintf(w, "column:%s;", col.ColName)
-			//主键
-			if col.PrimaryKey {
-				fmt.Fprint(w, "primary_key;")
-			}
-			//自增
-			if col.AutoIncr {
-				fmt.Fprint(w, "auto_increment;")
-			}
-			//数据类型
-			fmt.Fprintf(w, "type:%s;", col.ColType)
-			//是否允许空
-			if !col.Nullable {
-				fmt.Fprint(w, "not null;")
-			}
-			fmt.Fprintf(w, `" json:"%s,omitempty"`, col.ColName)
 			fmt.Fprint(w, "`")
 
-			if col.Comment != "" && len(col.Comment) < 50 {
-				fmt.Fprintf(w, "// %s", col.Comment)
+			if d.gorm {
+				fmt.Fprint(w, "gorm:")
+				fmt.Fprint(w, `"`)
+				fmt.Fprintf(w, "column:%s;", col.ColName)
+				//主键
+				if col.PrimaryKey {
+					fmt.Fprint(w, "primary_key;")
+				}
+				//自增
+				if col.AutoIncr {
+					fmt.Fprint(w, "auto_increment;")
+				}
+				if d.gormType {
+					//数据类型
+					fmt.Fprintf(w, "type:%s;", col.ColType)
+				}
+				if d.gormNullable {
+					//是否允许空
+					if !col.Nullable {
+						fmt.Fprint(w, "not null;")
+					}
+				}
+				fmt.Fprint(w, `"`)
 			}
+
+			if d.json {
+				fmt.Fprintf(w, ` json:"%s,omitempty"`, col.ColName)
+			}
+
+			if d.toml {
+				fmt.Fprintf(w, ` toml:"%s"`, col.ColName)
+			}
+
+			if d.yaml {
+				fmt.Fprintf(w, ` yaml:"%s"`, col.ColName)
+			}
+
+			fmt.Fprint(w, "`")
+
+			// if col.Comment != "" && len(col.Comment) < 50 {
+			fmt.Fprintf(w, "// %s", col.Comment)
+			// }
 			fmt.Fprintln(w)
 
 			if goFieldName == "UpdateAt" {

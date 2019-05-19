@@ -21,15 +21,23 @@ const (
 
 func main() {
 	var (
-		usr     string
-		pwd     string
-		ip      string
-		name    string
-		output  string
-		pkg     string
-		prefix  []string
-		verbose bool
-		fmtTool string
+		usr          string
+		pwd          string
+		ip           string
+		name         string
+		output       string
+		pkg          string
+		removePrefix []string
+		prefix       []string
+		verbose      bool
+		fmtTool      string
+		json         bool
+		xml          bool
+		toml         bool
+		yaml         bool
+		gorm         bool
+		gormType     bool
+		gormNullable bool
 	)
 
 	fmt.Println("gormc - ", VERSION)
@@ -43,10 +51,22 @@ func main() {
 	pflag.StringVarP(&name, "name", "n", "", "数据库名")
 	pflag.StringVarP(&output, "output", "o", "", "生成的文件路径和文件名，默认在当前目录下的 models/数据库名称.go")
 	pflag.StringVar(&pkg, "pkg", "", "包名，默认是目录名称")
-	pflag.StringSliceVar(&prefix, "remove-prefix", []string{"t_", "tab_", "tb_"}, "移除前缀")
+	pflag.StringSliceVar(&removePrefix, "remove-prefix", []string{"t_", "tab_", "tb_"}, "移除前缀")
+	pflag.StringSliceVar(&prefix, "prefix", nil, "仅包含前缀")
 	pflag.BoolVarP(&verbose, "verbose", "v", false, "输出详细信息")
 	pflag.StringVar(&fmtTool, "format-tool", "goimports", "格式化工具")
+	pflag.BoolVar(&json, "json", false, "添加 json tag")
+	pflag.BoolVar(&xml, "xml", false, "添加 xml tag")
+	pflag.BoolVar(&toml, "toml", false, "添加 toml tag")
+	pflag.BoolVar(&yaml, "yaml", false, "添加 yaml tag")
+	pflag.BoolVar(&gorm, "gorm", true, "添加 gorm tag")
+	pflag.BoolVar(&gormType, "gorm.type", true, "添加 gorm type tag")
+	pflag.BoolVar(&gormNullable, "gorm.nullable", true, "添加 gorm nullable tag")
 	pflag.Parse()
+
+	if gormType || gormNullable {
+		gorm = true
+	}
 
 	if name == "" {
 		pflag.Usage()
@@ -80,7 +100,20 @@ func main() {
 		pkg = filepath.Base(dir)
 	}
 
-	var d Database = &mysqlDatabase{conn: db, pkg: pkg, database: name, prefix: prefix}
+	var d Database = &mysqlDatabase{
+		conn:         db,
+		pkg:          pkg,
+		database:     name,
+		removePrefix: removePrefix,
+		prefix:       prefix,
+		json:         json,
+		xml:          xml,
+		toml:         toml,
+		yaml:         yaml,
+		gorm:         gorm,
+		gormType:     gormType,
+		gormNullable: gormNullable,
+	}
 
 	err = d.GenerateStruct(w)
 	if err != nil {
