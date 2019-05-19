@@ -123,7 +123,7 @@ func (d *mysqlDatabase) GenerateStruct(w io.Writer) error {
 				fmt.Fprint(w, "auto_increment;")
 			}
 			//数据类型
-			fmt.Fprintf(w, "%s;", col.ColType)
+			fmt.Fprintf(w, "type:%s;", col.ColType)
 			//是否允许空
 			if !col.Nullable {
 				fmt.Fprint(w, "not null;")
