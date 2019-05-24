@@ -196,12 +196,12 @@ func (d *mysqlDatabase) GenerateStruct(w io.Writer) error {
 		fmt.Fprintln(w)
 
 		if hasCreateAt {
-			fmt.Fprintf(w, `func (i %s) BeforeCreate() error { i.CreateAt = time.Now().Unix(); return nil }`, structName)
+			fmt.Fprintf(w, `func (i *%s) BeforeCreate() error { i.CreateAt = time.Now().Unix(); return nil }`, structName)
 			fmt.Fprintln(w)
 		}
 
 		if hasUpdateAt {
-			fmt.Fprintf(w, `func (i %s) BeforeUpdate() error { i.UpdateAt = time.Now().Unix(); return nil }`, structName)
+			fmt.Fprintf(w, `func (i *%s) BeforeUpdate() error { i.UpdateAt = time.Now().Unix(); return nil }`, structName)
 			fmt.Fprintln(w)
 		}
 	}
