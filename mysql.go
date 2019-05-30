@@ -104,7 +104,11 @@ func (d *mysqlDatabase) GenerateStruct(w io.Writer) error {
 
 	fmt.Fprintln(w, `/* auto generate by gormc, http://github.com/shuxs/gormc */`)
 	fmt.Fprintln(w, "package ", d.pkg)
-	fmt.Fprintln(w, `import ("time")`)
+	fmt.Fprintln(w, `import (
+	"time"
+
+	"github.com/jinzhu/gorm"
+)`)
 
 	for _, tab := range tables {
 		name := tab.Name
@@ -122,6 +126,7 @@ func (d *mysqlDatabase) GenerateStruct(w io.Writer) error {
 
 		structName := convertToGoName(name)
 		log.Printf("%s -> %s: %s", tab.Name, structName, tab.Comment)
+		fmt.Fprintln(w)
 		fmt.Fprintf(w, "//%s -> %s %s\n", structName, tab.Name, tab.Comment)
 		fmt.Fprintf(w, "type %s struct {\n", structName)
 
@@ -192,17 +197,28 @@ func (d *mysqlDatabase) GenerateStruct(w io.Writer) error {
 
 		fmt.Fprintln(w, `}`)
 
-		fmt.Fprintf(w, `func (%s) TableName() string { return "%s" }`, structName, tab.Name)
-		fmt.Fprintln(w)
+		fmt.Fprintf(w, `
+func (%s) TableName() string { 
+	return "%s" 
+}
+`, structName, tab.Name)
 
 		if hasCreateAt {
-			fmt.Fprintf(w, `func (i *%s) BeforeCreate() error { i.CreateAt = time.Now().Unix(); return nil }`, structName)
-			fmt.Fprintln(w)
+			fmt.Fprintf(w, `
+func (i *%s) BeforeCreate(scope *gorm.Scope) error {
+	i.CreateAt = time.Now().Unix()
+	return scope.SetColumn("CreateAt", i.CreateAt)
+}
+`, structName)
 		}
 
 		if hasUpdateAt {
-			fmt.Fprintf(w, `func (i *%s) BeforeUpdate() error { i.UpdateAt = time.Now().Unix(); return nil }`, structName)
-			fmt.Fprintln(w)
+			fmt.Fprintf(w, `
+func (i *%s) BeforeUpdate(scope *gorm.Scope) error {
+	i.UpdateAt = time.Now().Unix()
+	return scope.SetColumn("UpdateAt", i.UpdateAt)
+}
+`, structName)
 		}
 	}
 	return nil
