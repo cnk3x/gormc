@@ -30,15 +30,58 @@ type ColumnSchema struct {
 	Comment    string
 }
 
+var commonInitialisms = map[string]bool{
+	"ACL":   true,
+	"API":   true,
+	"ASCII": true,
+	"CPU":   true,
+	"CSS":   true,
+	"DNS":   true,
+	"EOF":   true,
+	"GUID":  true,
+	"HTML":  true,
+	"HTTP":  true,
+	"HTTPS": true,
+	"ID":    true,
+	"IP":    true,
+	"JSON":  true,
+	"LHS":   true,
+	"QPS":   true,
+	"RAM":   true,
+	"RHS":   true,
+	"RPC":   true,
+	"SLA":   true,
+	"SMTP":  true,
+	"SQL":   true,
+	"SSH":   true,
+	"TCP":   true,
+	"TLS":   true,
+	"TTL":   true,
+	"UDP":   true,
+	"UI":    true,
+	"UID":   true,
+	"UUID":  true,
+	"URI":   true,
+	"URL":   true,
+	"UTF8":  true,
+	"VM":    true,
+	"XML":   true,
+	"XMPP":  true,
+	"XSRF":  true,
+	"XSS":   true,
+}
+
 func convertToGoName(name string) string {
-	if name == "" {
-		return ""
-	}
-	name = strings.Trim(strings.ToLower(name), "_")
-	name = regexp.MustCompile(`(_[[:alnum:]]+?)`).ReplaceAllStringFunc(name,
-		func(s string) string {
-			return strings.ToUpper(strings.Trim(s, "_"))
-		})
+	name = regexp.MustCompile(`([A-Z]+)`).ReplaceAllString(name, "_$1")
+	name = strings.ToLower(regexp.MustCompile(`[^[:alnum:]]+`).ReplaceAllString(name, "_"))
+	name = regexp.MustCompile(`(_[[:alnum:]]+)`).ReplaceAllStringFunc(name, func(s string) string {
+		sUp := strings.ToUpper(s[1:])
+		if _, ok := commonInitialisms[sUp]; ok {
+			return sUp
+		}
+		return strings.ToUpper(s[1:2]) + s[2:]
+	})
+	name = strings.TrimLeftFunc(name, func(r rune) bool { return r > '0' && r < '9' || r == '_' })
 	return strings.ToUpper(name[:1]) + name[1:]
 }
 
